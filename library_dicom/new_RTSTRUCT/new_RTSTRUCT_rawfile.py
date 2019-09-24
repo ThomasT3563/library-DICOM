@@ -1,3 +1,4 @@
+
 import datetime
 import pydicom
 import random
@@ -5,6 +6,7 @@ import random
 from library_dicom.new_RTSTRUCT.RTROIObservations import RTROIObservations
 from library_dicom.new_RTSTRUCT.ROIContour import ROIContour
 from library_dicom.new_RTSTRUCT.StructureSetROI import StructureSetROI
+from library_dicom.new_RTSTRUCT.ReferencedFrameOfReference import ReferencedFrameOfReference
 
 class new_RTSTRUCT_rawfile(pydicom.dataset.FileDataset):
     """
@@ -25,15 +27,28 @@ class new_RTSTRUCT_rawfile(pydicom.dataset.FileDataset):
         self.gathering_tags(heir_tags)
         self.generates_tags()
         
-        # instantiate sequence
+        # instantiate sequences
         self.RTROIObservationsSequence = pydicom.sequence.Sequence()
         self.ROIContourSequence = pydicom.sequence.Sequence()
         self.StructureSetROISequence = pydicom.sequence.Sequence()
-        
+        self.ReferencedFrameOfReferenceSequence = pydicom.sequence.Sequence()
+
         # insert empty ROI in sequences
         self.RTROIObservationsSequence.append(RTROIObservations())
-        self.ROIContourSequence.append(ROIContour())
-        self.StructureSetROISequence.append(StructureSetROI(heir_tags.get('FrameOfReferenceUID')))
+        
+        self.ROIContourSequence.append(ROIContour(
+            ReferencedSOPClassUID = heir_tags.get('SOPClassUID'),
+            list_SOPInstanceUID = [heir_tags.get('list_SOPInstanceUID')[0]]))
+        
+        self.StructureSetROISequence.append(StructureSetROI(
+            ReferencedFrameOfReferenceUID = heir_tags.get('FrameOfReferenceUID')))
+        
+        self.ReferencedFrameOfReferenceSequence.append(ReferencedFrameOfReference(
+            FrameOfReferenceUID=heir_tags.get('FrameOfReferenceUID'),
+            StudyInstanceUID=heir_tags.get('StudyInstanceUID'),
+            SeriesInstanceUID=heir_tags.get('SeriesInstanceUID'),
+            ReferencedSOPClassUID=heir_tags.get('SOPClassUID'),
+            list_SOPInstanceUID=heir_tags.get('list_SOPInstanceUID')))
         
     def generates_file_meta(self):
         """

@@ -80,6 +80,7 @@ class modality_DICOM_default(object):
                 'PhysiciansOfRecord':None,
                 'ReferringPhysicianName':None,
                 #'SoftwareVersions':None,
+                'SeriesInstanceUID':None,
                 'SpecificCharacterSet':None,
                 #'StationName':None,
                 'StudyDate':None,
@@ -87,7 +88,8 @@ class modality_DICOM_default(object):
                 'StudyID':None,
                 'StudyInstanceUID':None,
                 'StudyTime':None,
-                'FrameOfReferenceUID':None
+                'FrameOfReferenceUID':None,
+                'SOPClassUID':None
                 }
         
         with pydicom.dcmread(self.filenames[0]) as dcm:
@@ -101,6 +103,10 @@ class modality_DICOM_default(object):
                 except Exception:
                     raise Exception
 
+        # force write list_SOPInstanceUID to Tags (must not be directly herited!)
+        self.__GatherSlices() # gather and sort self.slices
+        Tags['list_SOPInstanceUID'] = [s.SOPInstanceUID for s in self.slices]
+        
         return Tags
     
     def generates_empty_RTSTRUCT(self,filename):
@@ -129,22 +135,11 @@ class modality_DICOM_default(object):
                                                 dicom_spacing=Spacing,
                                                 dicom_origin=Origin)
         
-        
-        # gathering shared DICOM source parameters
-        # parameters that might be needed for new files
-        #shape_image = (dcm.Columns,dcm.Rows,len(self.list_SOPInstanceUID))
-        #parameters = {'list_SOPInstanceUID':self.list_SOPInstanceUID,
-        #              'FrameOfReferenceUID': dcm.FrameOfReferenceUID,
-        #              'ShapeImage':shape_image,
-        #              'PixelSpacing':dcm.PixelSpacing,
-        #              'ImagePositionPatient':dcm.ImagePositionPatient,
-        #              'SliceThickness':self.SliceThickness,
-        #              'RescaleSlope':dcm.RescaleSlope,
-        #              'RescaleIntercept':dcm.RescaleIntercept
-        
         # operations specific to RTSTRUCT
-        file_RTSTRUCT.instantiate_SOPUIDs(list_SOPInstanceUID = self.list_SOPInstanceUID,
-                                          FrameOfReferenceUID = self.slices[0].FrameOfReferenceUID)
+        file_RTSTRUCT.instantiate_SOPUIDs(
+                        ReferencedSOPClassUID = self.ReferencedSOPClassUID,
+                        list_SOPInstanceUID = self.list_SOPInstanceUID,
+                        FrameOfReferenceUID = self.slices[0].FrameOfReferenceUID)
         file_RTSTRUCT.add_ROIs(list_ROI,list_UID,labels_names,labels_numbers)
         file_RTSTRUCT.save(filename)
         

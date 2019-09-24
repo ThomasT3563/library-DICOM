@@ -18,13 +18,16 @@ class ROIContour(pydicom.dataset.Dataset):
     def __init__(self,
                  list_ContourData=[[1.0,1.0,1.0],],   #important
                  list_SOPInstanceUID=[''],            #important
+                 ReferencedSOPClassUID='1.2.840.10008.5.1.4.1.1.2', # CT by default
                  ROIDisplayColor=['255', '0', '0'],
                  ReferencedROINumber='0'):
         super().__init__()
         
         # creation of a ContourSequence
-        new_ContourSequence = self.create_ContourSequence(list_ContourData,list_SOPInstanceUID)
-        self.ContourSequence = new_ContourSequence
+        self.ContourSequence = self.create_ContourSequence(
+                                        list_ContourData=list_ContourData,
+                                        list_SOPInstanceUID=list_SOPInstanceUID,
+                                        ReferencedSOPClassUID=ReferencedSOPClassUID)
         
         self.ROIDisplayColor = ROIDisplayColor
         self.ReferencedROINumber = ReferencedROINumber
@@ -32,7 +35,8 @@ class ROIContour(pydicom.dataset.Dataset):
     def create_ContourSequence(self,
                                list_ContourData=[[1.0,1.0,1.0],],
                                list_SOPInstanceUID=[''],
-                               ContourGeometricType='CLOSED_PLANAR',):
+                               ContourGeometricType='CLOSED_PLANAR',
+                               ReferencedSOPClassUID=''):
         """
             Generates a ContourSequence item
                 - ContourData
@@ -53,8 +57,9 @@ class ROIContour(pydicom.dataset.Dataset):
             dataset.ContourGeometricType = ContourGeometricType
             
              # creation of a ContourImageSequence
-            new_ContourImageSequence = self.create_ContourImageSequence(SOPInstanceUID)
-            dataset.ContourImageSequence = new_ContourImageSequence
+            dataset.ContourImageSequence = self.create_ContourImageSequence(
+                        ReferencedSOPInstanceUID = SOPInstanceUID,
+                        ReferencedSOPClassUID    = ReferencedSOPClassUID)
             
             dataset.NumberOfContourPoints = len(ContourData)/3
             #assert integer number of contour points
@@ -66,15 +71,11 @@ class ROIContour(pydicom.dataset.Dataset):
     
     def create_ContourImageSequence(self,
                                     ReferencedSOPInstanceUID='',
-                                    ReferencedSOPClassUID='1.2.840.10008.5.1.4.1.1.2'):
+                                    ReferencedSOPClassUID=''):
         """
             Generates an empty ContourImageSequence item
                 - ReferencedSOPClassUID
                 - ReferencedSOPInstanceUID
-            
-            ReferencedSOPClassUID = '1.2.840.10008.5.1.4.1.1.2' is 
-                specific to CT Image Storage, dont change it unless 
-                you know what you're doing
         """
         ContourImageSequence = pydicom.sequence.Sequence()
         
