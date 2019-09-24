@@ -6,6 +6,9 @@ import os
 import random
 import SimpleITK as sitk
 
+from library_dicom.new_RTSTRUCT.new_RTSTRUCT_rawfile import new_RTSTRUCT_rawfile
+from library_dicom.dicom_manipulations import convert_MASK_to_ROI
+
 class modality_DICOM_default(object):
     
     def __init__(self,filenames):
@@ -45,18 +48,8 @@ class modality_DICOM_default(object):
                 warnings.warn("Z axis Spacing is not constant : %s / %s" % (z_spacing,initial_z_spacing))
         return initial_z_spacing
     
-    def convert_to_NIFTI(self,path_save,filename=None):
+    def convert_to_NIFTI(self,filename=None):
         """ Generates .nii files from the DICOM serie """
-
-        # generates folder
-        if not os.path.exists(path_save):
-            os.makedirs(path_save)
-        
-        # generates filename
-        if filename is None:
-            filename = path_save+'/'+str(random.randint(0,1e8))+'.nii'
-        else:
-            filename = path_save+'/'+filename
         
         self.__GatherSlices()
         (Direction,Origin,Spacing) = self.__getMetadata()
@@ -71,8 +64,94 @@ class modality_DICOM_default(object):
         #sitk_img.SetMetaData()
         
         sitk.WriteImage(sitk_img,filename)
-        
-    def generate_RTSTRUCT(self,mask,path_new_directory,existing_RTSTRUCT=None,filename=None):
-        """ Generates a RTSTRUCT instance from a mask """
-        warnings.warn("work in progress")
+    
+    def __GatherTags(self):
+        """ called by generates_empty_RTSTRUCT """
 
+        Tags = {'AccessionNumber':None,
+                #'DeviceSerialNumber':None,
+                #'Manufacturer':None,
+                #'ManufacturerModelName':None,
+                'PatientBirthDate':None,
+                'PatientBirthTime':None,
+                'PatientID':None,
+                'PatientName':None,
+                'PatientSex':None,
+                'PhysiciansOfRecord':None,
+                'ReferringPhysicianName':None,
+                #'SoftwareVersions':None,
+                'SpecificCharacterSet':None,
+                #'StationName':None,
+                'StudyDate':None,
+                'StudyDescription':None,
+                'StudyID':None,
+                'StudyInstanceUID':None,
+                'StudyTime':None,
+                'FrameOfReferenceUID':None
+                }
+        
+        with pydicom.dcmread(self.filenames[0]) as dcm:
+
+            for tag in Tags.keys():
+                try:
+                    Tags[tag] = dcm.get(tag)
+                except AttributeError:
+                    warnings.warn("AttributeError with tag: %s" % tag)
+                    pass
+                except Exception:
+                    raise Exception
+
+        return Tags
+    
+    def generates_empty_RTSTRUCT(self,filename):
+        """ create a empty DICOM RTSTRUCT file, save it and return the modality_DICOM_RTSTRUCT object """
+        
+        inheritance_tags = self.__GatherTags()
+               
+        new_RTSTRUCT = new_RTSTRUCT_rawfile(filename,inheritance_tags)
+        new_RTSTRUCT.save_as(filename)
+
+        return None
+    
+    
+    def add_MASK_to_RTSTRUCT(self,mask,labels_names,labels_numbers,file_RTSTRUCT,filename):
+        """ from an existing RTSTRUCT, generates new UIDs, add a Mask and save it """
+
+        self.__GatherSlices() # gather and sort self.slices
+        self.list_SOPInstanceUID = [s.SOPInstanceUID for s in self.slices]
+        
+        (Direction,Origin,Spacing) = self.__getMetadata()
+        
+        # convert MASK to ROI
+        list_ROI,list_UID = convert_MASK_to_ROI(mask=mask,
+                                                label_numbers=labels_numbers,
+                                                list_SOPInstanceUID=self.list_SOPInstanceUID,
+                                                dicom_spacing=Spacing,
+                                                dicom_origin=Origin)
+        
+        
+        # gathering shared DICOM source parameters
+        # parameters that might be needed for new files
+        #shape_image = (dcm.Columns,dcm.Rows,len(self.list_SOPInstanceUID))
+        #parameters = {'list_SOPInstanceUID':self.list_SOPInstanceUID,
+        #              'FrameOfReferenceUID': dcm.FrameOfReferenceUID,
+        #              'ShapeImage':shape_image,
+        #              'PixelSpacing':dcm.PixelSpacing,
+        #              'ImagePositionPatient':dcm.ImagePositionPatient,
+        #              'SliceThickness':self.SliceThickness,
+        #              'RescaleSlope':dcm.RescaleSlope,
+        #              'RescaleIntercept':dcm.RescaleIntercept
+        
+        # operations specific to RTSTRUCT
+        file_RTSTRUCT.instantiate_SOPUIDs(list_SOPInstanceUID = self.list_SOPInstanceUID,
+                                          FrameOfReferenceUID = self.slices[0].FrameOfReferenceUID)
+        file_RTSTRUCT.add_ROIs(list_ROI,list_UID,labels_names,labels_numbers)
+        file_RTSTRUCT.save(filename)
+        
+        return None
+
+
+        
+        
+        
+        
