@@ -49,24 +49,28 @@ class modality_DICOM_RTSTRUCT(modality_DICOM_default):
         (self.ObservationNumbers,self.ReferenceROINumbers) = self.extractROInumbers()
 
     def convert_to_NIFTI(self,filename=None):
+        """ deprecation """
         
+        # TODO
         warnings.warn("operation not working yet")
         
         return None
     
     def generates_empty_RTSTRUCT(self,filename):
-        """ depreccation : create a empty DICOM RTSTRUCT file, save it and return the modality_DICOM_RTSTRUCT object """
+        """ deprecation : create a empty DICOM RTSTRUCT file, save it and return the modality_DICOM_RTSTRUCT object """
         sys.exit('Cannot create a new DICOM RTSTRUCT from a DICOM RTSTRUCT')
 
     def add_MASK_to_RTSTRUCT(self,mask,labels_names,labels_numbers_numbers,file_RTSTRUCT,filename):
         """ deprecation : from an existing RTSTRUCT, generates new UIDs, add a Mask and save it """
         sys.exit('Cannot create a new DICOM RTSTRUCT from a DICOM RTSTRUCT')
 
-    def instantiate_SOPUIDs(self,list_SOPInstanceUID,FrameOfReferenceUID):
+    def instantiate_SOPUIDs(self,ReferencedSOPClassUID,
+                            list_SOPInstanceUID,FrameOfReferenceUID):
         """ by generating new SOP UIDs, create a pseudo new RTSTRUCT """
         
         # global parameters
         # possibility to add shape, pixel spacing etc
+        self.ReferencedSOPClassUID = ReferencedSOPClassUID
         self.list_SOPInstanceUID = list_SOPInstanceUID
         self.FrameOfReferenceUID = FrameOfReferenceUID
         
@@ -151,10 +155,11 @@ class modality_DICOM_RTSTRUCT(modality_DICOM_default):
             new_RTROIObservations = self.__create_RTROIObservations(
                 ReferencedROINumber=ROI_number,
                 ROIObservationLabel=ROI_name
-            ) 
+            )
             new_ROIContour = self.__create_ROIContour(
                 list_ContourData=ROI_list_ContourData,
                 list_SOPInstanceUID=ROI_list_SOPInstanceUID,
+                ReferencedSOPClassUID=self.ReferencedSOPClassUID,
                 ROIDisplayColor=ROI_Color,
                 ReferencedROINumber=ROI_number
             ) 
@@ -205,6 +210,7 @@ class modality_DICOM_RTSTRUCT(modality_DICOM_default):
     def __create_ROIContour(self,
                             list_ContourData=[[1.0,1.0,1.0],],
                             list_SOPInstanceUID=None,
+                            ReferencedSOPClassUID='',
                             ROIDisplayColor=['255', '0', '0'],
                             ReferencedROINumber=None):
         """
@@ -222,6 +228,7 @@ class modality_DICOM_RTSTRUCT(modality_DICOM_default):
         new_ROIContour = ROIContour(
             list_ContourData=list_ContourData,
             list_SOPInstanceUID=list_SOPInstanceUID,
+            ReferencedSOPClassUID=ReferencedSOPClassUID,
             ROIDisplayColor=ROIDisplayColor,
             ReferencedROINumber=ReferencedROINumber)
         return new_ROIContour
@@ -254,9 +261,4 @@ class modality_DICOM_RTSTRUCT(modality_DICOM_default):
     
     def save(self,filename):
         self.rawfile.save_as(filename)
-
-        
-        
-        
-        
-        
+  
